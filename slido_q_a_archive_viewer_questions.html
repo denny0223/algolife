@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Slido Q&A Archive Viewer</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#111722; --muted:#7a8a9a; --text:#e7eef7; --accent:#84b0ff;
+      --badge:#20304a; --good:#13c07b; --warn:#ffb020; --danger:#ff5a5f;
+      --line:#1b2432;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, "Noto Sans CJK JP", sans-serif}
+    header{position:sticky;top:0;z-index:9;background:linear-gradient(180deg, rgba(11,15,20,.97), rgba(11,15,20,.90));backdrop-filter:saturate(120%) blur(8px);}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    h1{margin:0 0 10px;font-size:24px}
+    .controls{display:grid;grid-template-columns: 1fr auto auto;gap:10px;align-items:end}
+    .controls .row{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;color:var(--muted)}
+    input[type="search"], select{appearance:none;background:var(--card);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:10px}
+    label{color:var(--muted);font-size:13px}
+    main{padding:16px 0}
+    .summary{color:var(--muted);font-size:14px;margin:6px 0 16px}
+    .grid{display:grid;grid-template-columns:1fr;gap:10px}
+    .card{display:grid;grid-template-columns:72px 1fr;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+    .score{align-self:flex-start;background:#0f1623;border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+    .score .n{font-weight:700;font-size:20px}
+    .score .lbl{font-size:12px;color:var(--muted)}
+    .qtext{white-space:pre-wrap;word-break:break-word;font-size:18px}
+    .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .badge{font-size:12px;padding:4px 8px;border-radius:999px;background:var(--badge);border:1px solid var(--line);color:#cfe0ff}
+    .badge.answered{background:rgba(19,192,123,.12);color:#baf3dc;border-color:rgba(19,192,123,.2)}
+    .badge.highlight{background:rgba(255,176,32,.12);color:#ffe0a6;border-color:rgba(255,176,32,.25)}
+    .badge.withdrawn{background:rgba(255,90,95,.12);color:#ffc8ca;border-color:rgba(255,90,95,.25)}
+    .badge.archived{background:rgba(132,176,255,.12);color:#d6e3ff;border-color:rgba(132,176,255,.25)}
+    .muted{color:var(--muted)}
+    .sep{height:1px;background:var(--line);margin:14px 0}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+    .empty{opacity:.7;padding:30px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+    a.anchor{color:var(--muted);text-decoration:none}
+    .footer{color:var(--muted);font-size:13px;padding:24px 0}
+    @media (min-width:900px){ .grid{grid-template-columns:1fr 1fr} }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Slido Q&A Archive</h1>
+      <div class="controls">
+        <div class="row">
+          <div>
+            <label for="q">搜尋</label><br>
+            <input id="q" type="search" placeholder="輸入關鍵字…">
+          </div>
+          <div>
+            <label for="lang">語言</label><br>
+            <select id="lang"><option value="">全部</option></select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="sort">排序</label><br>
+            <select id="sort">
+              <option value="top">依讚數（由高到低）</option>
+              <option value="new">最新發佈</option>
+              <option value="old">最早發佈</option>
+              <option value="recent">最近更新</option>
+            </select>
+          </div>
+          <div>
+            <label>狀態過濾</label><br>
+            <span class="pill"><input id="f-ans" type="checkbox"> 已回答</span>
+            <span class="pill"><input id="f-unans" type="checkbox"> 未回答</span>
+            <span class="pill"><input id="f-hi" type="checkbox"> 置頂/精選</span>
+            <span class="pill"><input id="f-wd" type="checkbox"> 撤回</span>
+            <span class="pill"><input id="f-ar" type="checkbox"> 已封存</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="summary" id="summary">載入中…</div>
+    <div class="grid" id="list"></div>
+    <div class="empty" id="empty" style="display:none">沒有符合條件的項目</div>
+    <div class="footer">此頁僅重現 Slido Q&A 題目列表之呈現概念，所有內容均來自提供的 JSON 檔案。</div>
+  </div>
+
+<script>
+(function(){
+  const DATA_URL = './questions.json';
+  const $q = document.getElementById('q');
+  const $lang = document.getElementById('lang');
+  const $sort = document.getElementById('sort');
+  const filters = {
+    ans: document.getElementById('f-ans'),
+    unans: document.getElementById('f-unans'),
+    hi: document.getElementById('f-hi'),
+    wd: document.getElementById('f-wd'),
+    ar: document.getElementById('f-ar')
+  };
+  const $list = document.getElementById('list');
+  const $empty = document.getElementById('empty');
+  const $summary = document.getElementById('summary');
+
+  /** utils **/
+  const html = (s)=>{ const t=document.createElement('template'); t.innerHTML=s.trim(); return t.content.firstChild };
+  const esc = (s)=> s==null ? '' : String(s).replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",
+    ">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  const dt = (s)=> s? new Date(s) : null;
+  const prettyTime = (d)=> d? d.toLocaleString() : '';
+
+  function deduce(q){
+    const attrs = q.attrs || {};
+    const answered = q.is_answered || attrs.experiment_is_answered || false;
+    const highlighted = q.is_highlighted || false;
+    const withdrawn = (q.was_withdrawn===true) || (attrs.was_withdrawn===true) || false;
+    const archived = !!(q.date_moved_to_archive);
+    const lang = attrs.language || '';
+    const name = (attrs.author_name || (q.author && (q.author.name || (q.author.attrs && q.author.attrs.author_name))) ) || (q.is_anonymous? '匿名' : null);
+    const author = q.is_anonymous? '匿名' : (name || '');
+    const text = (q.text_formatted!=null && q.text_formatted!=='' ? q.text_formatted : q.text) || '';
+    return {
+      id: q.event_question_id || q.id || Math.random().toString(36).slice(2),
+      text, raw: q,
+      score: q.score || 0,
+      answered, highlighted, withdrawn, archived,
+      language: lang,
+      author,
+      created: dt(q.date_created), updated: dt(q.date_updated),
+      highlightedAt: dt(q.date_highlighted)
+    };
+  }
+
+  function renderItem(x){
+    const badges = [];
+    if(x.answered) badges.push('<span class="badge answered">已回答</span>');
+    if(x.highlighted) badges.push('<span class="badge highlight">精選</span>');
+    if(x.withdrawn) badges.push('<span class="badge withdrawn">撤回</span>');
+    if(x.archived) badges.push('<span class="badge archived">已封存</span>');
+
+    const meta = [
+      x.author? `<span class="muted">${esc(x.author)}</span>`:'',
+      x.language? `<span class="muted">${esc(x.language.toUpperCase())}</span>`:'',
+      x.created? `<span class="muted">建立：${esc(prettyTime(x.created))}</span>`:'',
+      x.updated? `<span class="muted">更新：${esc(prettyTime(x.updated))}</span>`:''
+    ].filter(Boolean).join('<span class="muted"> · </span>');
+
+    const card = html(`
+      <article class="card" data-answered="${x.answered}" data-unanswered="${!x.answered}" data-highlighted="${x.highlighted}" data-withdrawn="${x.withdrawn}" data-archived="${x.archived}" data-lang="${esc(x.language)}">
+        <div class="score">
+          <div class="n">${x.score|0}</div>
+          <div class="lbl">票數</div>
+        </div>
+        <div>
+          <div class="qtext" id="q-${x.id}"></div>
+          <div class="meta">${badges.join('')} ${meta? `<span class="muted"> · </span>${meta}`:''}
+            <span style="flex:1"></span>
+            <a class="anchor" href="#q-${x.id}" title="連結到此題">#</a>
+          </div>
+        </div>
+      </article>`);
+
+    // 安全呈現文字：text_formatted 可能已處理；為避免 XSS 全部當純文字
+    card.querySelector('.qtext').textContent = x.text;
+    return card;
+  }
+
+  function applyFilters(items){
+    const q = $q.value.trim();
+    const want = {
+      ans: filters.ans.checked,
+      unans: filters.unans.checked,
+      hi: filters.hi.checked,
+      wd: filters.wd.checked,
+      ar: filters.ar.checked,
+      lang: $lang.value
+    };
+    return items.filter(x=>{
+      if(want.lang && x.language!==want.lang) return false;
+      if(q){ const s = (x.text+" "+(x.author||'')).toLowerCase(); if(!s.includes(q.toLowerCase())) return false; }
+      if(want.ans && !x.answered) return false;
+      if(want.unans && x.answered) return false;
+      if(want.hi && !x.highlighted) return false;
+      if(want.wd && !x.withdrawn) return false;
+      if(want.ar && !x.archived) return false;
+      return true;
+    });
+  }
+
+  function sortItems(items){
+    const how = $sort.value;
+    const key = {
+      top: (a,b)=> (b.score|0) - (a.score|0) || (a.created - b.created),
+      new: (a,b)=> (b.created||0) - (a.created||0),
+      old: (a,b)=> (a.created||0) - (b.created||0),
+      recent: (a,b)=> (b.updated||b.created||0) - (a.updated||a.created||0)
+    }[how];
+    return items.slice().sort(key);
+  }
+
+  function updateView(all){
+    const filtered = applyFilters(all);
+    const sorted = sortItems(filtered);
+    $list.innerHTML = '';
+    if(sorted.length===0){ $empty.style.display='block'; }
+    else { $empty.style.display='none'; sorted.forEach(x=>$list.appendChild(renderItem(x))); }
+    // summary
+    const total = all.length;
+    const a = all.filter(x=>x.answered).length;
+    const h = all.filter(x=>x.highlighted).length;
+    const w = all.filter(x=>x.withdrawn).length;
+    const ar = all.filter(x=>x.archived).length;
+    $summary.textContent = `共 ${total} 題 · 已回答 ${a} · 精選 ${h} · 撤回 ${w} · 已封存 ${ar}`;
+  }
+
+  async function main(){
+    // 讀取
+    const res = await fetch(DATA_URL);
+    if(!res.ok){ $summary.textContent = `讀取失敗：${res.status}`; return; }
+    const raw = await res.json();
+    const items = Array.isArray(raw)? raw.map(deduce) : Object.values(raw).flat().map(deduce);
+
+    // 語言選單
+    const langs = Array.from(new Set(items.map(x=>x.language).filter(Boolean))).sort();
+    langs.forEach(l=>{ const opt=document.createElement('option'); opt.value=l; opt.textContent=l.toUpperCase(); $lang.appendChild(opt); });
+
+    // 綁定事件
+    [$q,$lang,$sort,filters.ans,filters.unans,filters.hi,filters.wd,filters.ar]
+      .forEach(el=> el.addEventListener('input', ()=> updateView(items)));
+
+    updateView(items);
+
+    // 滾動到 hash（深連結）
+    if(location.hash){ const el = document.querySelector(location.hash); if(el) el.scrollIntoView({behavior:'smooth', block:'center'}); }
+  }
+
+  main().catch(err=>{ $summary.textContent = '讀取失敗'; console.error(err); });
+})();
+</script>
+</body>
+</html>

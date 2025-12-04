@@ -36,7 +36,7 @@ paginate: true
 
 ---
 
-<iframe src="https://wall.sli.do/event/8g5fMoBNrbj468GURSHF4b/?section=830bc948-dd74-4b73-8416-cd765e51a75c" height="100%" width="100%" frameBorder="0" style="min-height: 560px;" allow="clipboard-write" title="Slido"></iframe>
+![](./img/slido-1.png)
 
 ---
 
@@ -64,7 +64,12 @@ paginate: true
 
 ---
 
-<iframe src="https://wall.sli.do/event/8g5fMoBNrbj468GURSHF4b/?section=830bc948-dd74-4b73-8416-cd765e51a75c" height="100%" width="100%" frameBorder="0" style="min-height: 560px;" allow="clipboard-write" title="Slido"></iframe>
+![](./img/slido-2.png)
+
+
+---
+
+![](./img/slido-3.png)
 
 ---
 
@@ -149,7 +154,7 @@ paginate: true
 
 ---
 
-<iframe src="https://wall.sli.do/event/8g5fMoBNrbj468GURSHF4b/?section=830bc948-dd74-4b73-8416-cd765e51a75c" height="100%" width="100%" frameBorder="0" style="min-height: 560px;" allow="clipboard-write" title="Slido"></iframe>
+<iframe src="./slido_q_a_archive_viewer_questions.html" height="100%" width="100%" frameBorder="0" style="min-height: 560px;" allow="clipboard-write" title="Slido"></iframe>
 
 ---
 
